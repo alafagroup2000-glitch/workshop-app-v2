@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام إدارة ورشة السيارات</title>
+<!-- Google Fonts removed: it was blocking the page from rendering at all on
+     networks that can't reach fonts.googleapis.com. The CSS below already
+     falls back to a plain sans-serif font automatically. -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --yellow:#F3B41B;
+  --yellow-dark:#D99A00;
+  --ink:#1B1B1D;
+  --charcoal:#2B2B2E;
+  --steel:#8A8D93;
+  --mist:#F2F2F0;
+  --paper:#FFFFFF;
+  --line:#E4E3DF;
+  --good:#2E7D50;
+  --bad:#C0392B;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Tajawal','Cairo',sans-serif;
+  background:var(--mist);
+  color:var(--ink);
+  min-height:100vh;
+}
+h1,h2,h3,h4,.brand,.num{font-family:'Cairo',sans-serif;}
+button{font-family:inherit;cursor:pointer;border:none;}
+input,select,textarea{font-family:inherit;}
+::selection{background:var(--yellow);}
+
+/* ---------- LOGIN ---------- */
+#loginScreen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,var(--ink) 0%,var(--charcoal) 55%,#3a3a3c 100%);
+  padding:20px;
+}
+.login-card{
+  background:var(--paper);border-radius:16px;padding:36px 32px;width:100%;max-width:380px;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,0.5);
+  position:relative;overflow:hidden;
+}
+.login-card::before{
+  content:"";position:absolute;top:-40px;left:-40px;width:140px;height:140px;
+  background:var(--yellow);opacity:.15;border-radius:50%;
+}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.login-logo .chip{width:14px;height:34px;background:var(--yellow);border-radius:3px;transform:skewX(-12deg);}
+.login-logo .chip2{width:14px;height:24px;background:var(--ink);border-radius:3px;transform:skewX(-12deg);margin-top:10px;}
+.login-title{font-size:22px;font-weight:800;margin:14px 0 2px;}
+.login-sub{color:var(--steel);font-size:13px;margin-bottom:22px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;color:var(--steel);margin-bottom:6px;font-weight:600;}
+.field input,.field select,.field textarea{
+  width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:14.5px;
+  background:#fafaf9;transition:.15s;outline:none;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--yellow-dark);background:#fff;}
+.btn{
+  padding:11px 18px;border-radius:9px;font-weight:700;font-size:14.5px;transition:.15s;
+}
+.btn-primary{background:var(--ink);color:#fff;width:100%;}
+.btn-primary:hover{background:#000;}
+.btn-yellow{background:var(--yellow);color:var(--ink);}
+.btn-yellow:hover{background:var(--yellow-dark);}
+.btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--ink);}
+.btn-outline:hover{border-color:var(--ink);}
+.btn-danger{background:#fbeceb;color:var(--bad);}
+.btn-danger:hover{background:#f5d6d3;}
+.btn-sm{padding:6px 12px;font-size:13px;border-radius:7px;}
+.login-hint{font-size:12px;color:var(--steel);margin-top:16px;line-height:1.7;background:#faf7ee;border:1px solid #eee0bd;border-radius:8px;padding:10px 12px;}
+.err{color:var(--bad);font-size:13px;margin-top:8px;min-height:16px;}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none;min-height:100vh;}
+.shell{display:flex;min-height:100vh;}
+.sidebar{
+  width:230px;background:var(--ink);color:#fff;flex-shrink:0;
+  display:flex;flex-direction:column;padding:20px 14px;
+}
+.side-brand{display:flex;align-items:center;gap:10px;padding:6px 8px 20px;border-bottom:1px solid #3a3a3d;margin-bottom:14px;}
+.side-brand img{width:34px;height:34px;border-radius:8px;object-fit:cover;}
+.side-brand .no-logo{width:34px;height:34px;border-radius:8px;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--ink);}
+.side-brand div b{display:block;font-size:14px;}
+.side-brand div span{font-size:11px;color:#a9a9ac;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:9px;color:#c9c9cc;
+  font-size:14px;font-weight:600;margin-bottom:3px;cursor:pointer;transition:.15s;
+}
+.nav-item:hover{background:#2c2c2f;color:#fff;}
+.nav-item.active{background:var(--yellow);color:var(--ink);}
+.nav-icon{width:18px;text-align:center;}
+.side-foot{margin-top:auto;padding-top:14px;border-top:1px solid #3a3a3d;}
+.side-user{font-size:12.5px;color:#c9c9cc;margin-bottom:8px;}
+.side-user b{color:#fff;display:block;font-size:13.5px;}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.topbar{
+  background:#fff;border-bottom:1px solid var(--line);padding:16px 26px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5;
+}
+.topbar h2{margin:0;font-size:19px;}
+.topbar .branch-tag{font-size:12.5px;background:var(--mist);padding:5px 10px;border-radius:20px;color:var(--steel);font-weight:600;}
+.content{padding:24px 26px;flex:1;}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.card-head h3{margin:0;font-size:16px;}
+
+.grid{display:grid;gap:16px;}
+.grid-2{grid-template-columns:1fr 1fr;}
+.grid-3{grid-template-columns:1fr 1fr 1fr;}
+.grid-4{grid-template-columns:1fr 1fr 1fr 1fr;}
+@media(max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+
+.stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;}
+.stat .lbl{font-size:12.5px;color:var(--steel);font-weight:600;margin-bottom:6px;}
+.stat .val{font-size:26px;font-weight:800;}
+.stat .sub{font-size:11.5px;color:var(--steel);margin-top:4px;}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th{background:var(--mist);text-align:right;padding:10px 12px;font-weight:700;color:var(--charcoal);white-space:nowrap;}
+td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+tr:hover td{background:#fbfbf9;}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;}
+.badge-open{background:#fde9c8;color:#8a5a00;}
+.badge-paid{background:#dff3e6;color:var(--good);}
+.badge-branch{background:#eef0ff;color:#3f4fbf;}
+
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+.toolbar input,.toolbar select{padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13.5px;background:#fafaf9;}
+.spacer{flex:1;}
+
+.modal-bg{
+  position:fixed;inset:0;background:rgba(20,20,20,0.55);display:none;align-items:center;justify-content:center;
+  z-index:50;padding:20px;
+}
+.modal{background:#fff;border-radius:14px;padding:26px;max-width:600px;width:100%;max-height:88vh;overflow-y:auto;}
+.modal h3{margin-top:0;}
+.close-x{position:absolute;left:18px;top:18px;background:none;font-size:20px;color:var(--steel);}
+
+.items-row{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center;}
+.items-row input{padding:8px 10px;border:1.5px solid var(--line);border-radius:7px;font-size:13.5px;}
+.rm-item{background:#fbeceb;color:var(--bad);border-radius:7px;padding:8px 10px;font-size:13px;}
+
+/* ---------- INVOICE PRINT SHEET ---------- */
+#invoiceSheet{
+  width:760px;background:#fff;padding:0;position:relative;font-family:'Tajawal',sans-serif;color:var(--ink);
+  border:1px solid #eee;
+}
+.inv-top{position:relative;height:120px;overflow:hidden;background:#fff;}
+.inv-topbar-black{position:absolute;top:0;left:0;width:100%;height:8px;background:var(--ink);}
+.inv-head-row{display:flex;justify-content:space-between;align-items:flex-start;padding:22px 30px 0;position:relative;z-index:2;}
+.inv-title-ar{font-size:30px;font-weight:800;color:var(--ink);}
+.inv-reg{font-size:11px;color:var(--steel);margin-top:8px;line-height:1.8;}
+.inv-logo-box{width:92px;height:92px;border:2px solid var(--yellow);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fffdf5;}
+.inv-logo-box img{width:100%;height:100%;object-fit:contain;}
+.inv-logo-box .placeholder{font-size:11px;color:var(--yellow-dark);font-weight:800;text-align:center;}
+.inv-meta{display:flex;justify-content:space-between;padding:14px 30px;font-size:12.5px;color:var(--charcoal);border-bottom:1px solid var(--line);}
+.inv-req{padding:14px 30px;font-size:13.5px;font-weight:700;}
+.inv-req span{color:var(--steel);font-weight:500;}
+table.inv-table{width:100%;border-collapse:collapse;margin-top:6px;}
+table.inv-table thead th{background:var(--ink);color:#fff;font-size:12.5px;padding:10px 14px;text-align:center;}
+table.inv-table td{padding:9px 14px;text-align:center;font-size:13px;border-bottom:1px solid var(--line);}
+table.inv-table td.desc{text-align:right;}
+.inv-total-row{display:flex;justify-content:space-between;align-items:center;background:var(--yellow);margin:0 30px;padding:11px 16px;border-radius:8px;margin-top:10px;}
+.inv-total-row b{font-size:15px;}
+.inv-sign{padding:26px 30px 6px;font-size:13px;}
+.inv-thanks{text-align:center;font-weight:800;font-size:14px;color:var(--yellow-dark);padding:8px 0 4px;}
+.inv-foot{background:var(--charcoal);color:#e6e6e6;padding:12px 30px;font-size:10.5px;display:flex;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:6px;}
+
+.status-tag{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:700;}
+.status-open{background:#fde9c8;color:#8a5a00;}
+.status-fixed{background:#dff3e6;color:var(--good);}
+.status-progress{background:#e8ecff;color:#3f4fbf;}
+
+.empty{text-align:center;padding:40px 10px;color:var(--steel);font-size:13.5px;}
+.hidden{display:none !important;}
+label.req::after{content:" *";color:var(--bad);}
+.two-col-modal{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:560px){.two-col-modal{grid-template-columns:1fr;}}
+.small-note{font-size:12px;background:#faf7ee;border:1px solid #eee0bd;border-radius:8px;padding:9px 12px;color:#6b5c1f;margin-top:10px;}
+
+/* ---------- PARTS INSPECTION ---------- */
+.part-cat-title{font-weight:800;font-size:13.5px;margin:16px 0 6px;color:var(--charcoal);padding-bottom:4px;border-bottom:2px solid var(--yellow);}
+.part-row{display:grid;grid-template-columns:1.3fr 2fr 46px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px;}
+.part-row input[type=range]{width:100%;accent-color:var(--yellow-dark);}
+.part-row input[type=number]{width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:7px;font-size:13.5px;text-align:center;font-weight:700;}
+.part-val{font-weight:800;text-align:left;}
+.overall-box{display:flex;align-items:center;justify-content:space-between;background:var(--mist);border-radius:9px;padding:12px 16px;margin-top:14px;font-weight:800;font-size:15px;}
+.pbar-wrap{background:var(--line);border-radius:20px;height:9px;width:100%;overflow:hidden;}
+.pbar-fill{height:100%;border-radius:20px;}
+.plabel-row{display:grid;grid-template-columns:1.4fr 2fr 46px;gap:10px;align-items:center;padding:5px 0;font-size:12.5px;}
+.cond-good{color:var(--good);}
+.cond-mid{color:#8a5a00;}
+.cond-bad{color:var(--bad);}
+.sub-tabs{display:flex;gap:8px;margin-bottom:16px;}
+.sub-tab-btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;background:#fff;border:1.5px solid var(--line);color:var(--steel);}
+.sub-tab-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo"><div class="chip"></div><div class="chip2"></div></div>
+    <div class="login-title">نظام إدارة ورشة السيارات</div>
+    <div class="login-sub">تسجيل الدخول للمتابعة إلى حساب الورشة</div>
+    <div class="field">
+      <label>اسم المستخدم</label>
+      <input id="loginUser" placeholder="مثال: admin">
+    </div>
+    <div class="field">
+      <label>كلمة المرور</label>
+      <input id="loginPass" type="password" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">دخول</button>
+    <div class="err" id="loginErr"></div>
+    <div class="login-hint" id="loginHint">جاري تحميل بيانات النظام...</div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+<div class="shell">
+  <div class="sidebar">
+    <div class="side-brand">
+      <div id="sideLogoWrap"><div class="no-logo">و</div></div>
+      <div><b id="sideWorkshopName">ورشة السيارات</b><span id="sideBranchName">—</span></div>
+    </div>
+    <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')"><span class="nav-icon">🏠</span> لوحة التحكم</div>
+    <div class="nav-item" data-tab="invoices" onclick="switchTab('invoices')"><span class="nav-icon">🧾</span> الفواتير</div>
+    <div class="nav-item" data-tab="diagnostics" onclick="switchTab('diagnostics')"><span class="nav-icon">🔧</span> فحص السيارات</div>
+    <div class="nav-item" data-tab="inspections" onclick="switchTab('inspections')"><span class="nav-icon">🚗</span> فحص أجزاء السيارة</div>
+    <div class="nav-item" data-tab="reports" onclick="switchTab('reports')"><span class="nav-icon">📊</span> التقارير</div>
+    <div class="nav-item" data-tab="branches" onclick="switchTab('branches')"><span class="nav-icon">🏢</span> الفروع</div>
+    <div class="nav-item" data-tab="users" onclick="switchTab('users')"><span class="nav-icon">👥</span> المستخدمون</div>
+    <div class="nav-item" data-tab="settings" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span> إعدادات الورشة</div>
+    <div class="side-foot">
+      <div class="side-user"><b id="sideUserName">—</b><span id="sideUserRole">—</span></div>
+      <button class="btn btn-outline btn-sm" style="width:100%;color:#fff;border-color:#4a4a4d;" onclick="doLogout()">تسجيل الخروج</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <h2 id="pageTitle">لوحة التحكم</h2>
+      <div class="branch-tag" id="topBranchTag">كل الفروع</div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ MODAL ============ -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modalBox" style="position:relative;">
+    <button class="close-x" onclick="closeModal()">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- hidden print sheet, built dynamically -->
+<div style="position:fixed;top:-9999px;left:-9999px;" id="printHost"></div>
+
+<script>
+/* ===================================================================
+   STORAGE LAYER
+=================================================================== */
+const SKEY = {
+  settings:'workshop-settings',
+  users:'workshop-users',
+  branches:'workshop-branches',
+  invoices:'workshop-invoices',
+  diagnostics:'workshop-diagnostics',
+  inspections:'workshop-inspections'
+};
+
+/* Standard vehicle inspection checklist template, grouped by category */
+const CAR_PARTS_TEMPLATE = [
+  {cat:'المحرك', items:['زيت المحرك','فلتر الزيت','فلتر الهواء','سير المحرك','خزان المياه (الرديتر)','البواجي','حساسات المحرك']},
+  {cat:'نظام الفرامل', items:['تيل الفرامل الأمامي','تيل الفرامل الخلفي','ديسكات الفرامل','زيت الفرامل','فرامل اليد']},
+  {cat:'النظام الكهربائي', items:['البطارية','الدينامو (المولد)','المارش','الأسلاك والفيوزات','الأنوار الأمامية والخلفية']},
+  {cat:'نظام التعليق والقيادة', items:['المساعدين (الدعمات)','رمان الدركسون','جلدة الدركسون','الكاوتش (الإطارات)','بلي العجل']},
+  {cat:'التكييف', items:['غاز الفريون','كمبروسر التكييف','فلتر التكييف']},
+  {cat:'الهيكل والدهان', items:['الصدام الأمامي','الصدام الخلفي','الأبواب والمفصلات','الزجاج الأمامي','طلاء الهيكل']}
+];
+const DIAG_STATUS = {
+  open:{label:'قيد الفحص', cls:'status-open'},
+  progress:{label:'قيد الإصلاح', cls:'status-progress'},
+  fixed:{label:'تم الإصلاح', cls:'status-fixed'}
+};
+const PART_STATUS = {
+  good: {label:'جيد',             score:100, color:'#2E7D50', bg:'#dff3e6'},
+  fair: {label:'يحتاج انتباه',     score:50,  color:'#8a5a00', bg:'#fde9c8'},
+  bad:  {label:'يحتاج تغيير/تالف', score:0,   color:'#C0392B', bg:'#fbeceb'},
+  na:   {label:'لم يتم الفحص',     score:null,color:'#8A8D93', bg:'#eeeeee'}
+};
+/* Returns a 0-100 condition score for an inspected item.
+   New records store an exact percentage; older records stored a status label - map those for backward compatibility. */
+function itemScore(it){
+  if(it.percentage !== undefined && it.percentage !== null && it.percentage !== '') return Number(it.percentage);
+  if(it.status && PART_STATUS[it.status]) return PART_STATUS[it.status].score;
+  return null;
+}
+function conditionLabel(pct){
+  if(pct===null) return 'لم يتم الفحص';
+  if(pct>=85) return 'ممتاز';
+  if(pct>=65) return 'جيد';
+  if(pct>=40) return 'يحتاج انتباه';
+  return 'يحتاج تغيير/تالف';
+}
+
+/* ===================================================================
+   STORAGE LAYER - now backed by Google Sheets via Google Apps Script
+=================================================================== */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxIEIr7voJFtZVTgjsk9N-44DZPBxbqc1p6p7DA14M1bVzAtirxFFmAILxjlCc0NgcKVA/exec';
+const GAS_SECRET = 'mohanedfathi123';
+
+async function sGet(key, fallback){
+  try{
+    const res = await fetch(`${GAS_URL}?action=get&key=${encodeURIComponent(key)}&secret=${encodeURIComponent(GAS_SECRET)}`);
+    const data = await res.json();
+    if(data.error){ console.error('Google Sheet get error:', data.error); return fallback; }
+    if(data.value === null || data.value === undefined) return fallback;
+    return JSON.parse(data.value);
+  }catch(e){ console.error('sGet failed', e); return fallback; }
+}
+async function sSet(key, value){
+  try{
+    // Writing via GET (like reads already do) avoids a known Google Apps Script issue
+    // where a POST request's body can get silently dropped during its internal redirect.
+    const url = `${GAS_URL}?action=set&key=${encodeURIComponent(key)}&value=${encodeURIComponent(JSON.stringify(value))}&secret=${encodeURIComponent(GAS_SECRET)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.error){ console.error('Google Sheet set error:', data.error); return false; }
+    return true;
+  }catch(e){ console.error('sSet failed', e); return false; }
+}
+
+let DB = { settings:null, users:[], branches:[], invoices:[], diagnostics:[], inspections:[] };
+let CURRENT_USER = null;
+
+function uid(prefix){ return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+async function loadAll(){
+  DB.settings = await sGet(SKEY.settings, null);
+  DB.users = await sGet(SKEY.users, []);
+  DB.branches = await sGet(SKEY.branches, []);
+  DB.invoices = await sGet(SKEY.invoices, []);
+  DB.diagnostics = await sGet(SKEY.diagnostics, []);
+  DB.inspections = await sGet(SKEY.inspections, []);
+
+  let changed = false;
+  if(!DB.settings){
+    DB.settings = {
+      name:'ورشتي لإصلاح السيارات', logo:null, commercialRecord:'', taxNumber:'',
+      phone:'', email:'', address:'', website:'', currency:'ريال سعودي', thanksNote:'شكراً لتعاملكم معنا',
+      defaultCountryCode:'966'
+    };
+    changed = true;
+  }
+  if(DB.settings && !DB.settings.defaultCountryCode){ DB.settings.defaultCountryCode = '966'; changed = true; }
+  if(DB.branches.length===0){
+    DB.branches.push({id:uid('br'), name:'الفرع الرئيسي', address:''});
+    changed = true;
+  }
+  if(DB.users.length===0){
+    DB.users.push({id:uid('u'), username:'admin', password:'admin123', name:'مدير النظام', role:'admin', branchId:'all'});
+    changed = true;
+  }
+  if(changed){ await persistAll(); }
+}
+
+async function persistAll(){
+  await Promise.all([
+    sSet(SKEY.settings, DB.settings),
+    sSet(SKEY.users, DB.users),
+    sSet(SKEY.branches, DB.branches),
+    sSet(SKEY.invoices, DB.invoices),
+    sSet(SKEY.diagnostics, DB.diagnostics),
+    sSet(SKEY.inspections, DB.inspections)
+  ]);
+}
+async function saveSettings(){ await sSet(SKEY.settings, DB.settings); }
+async function saveUsers(){ await sSet(SKEY.users, DB.users); }
+async function saveBranches(){ await sSet(SKEY.branches, DB.branches); }
+async function saveInvoices(){ await sSet(SKEY.invoices, DB.invoices); }
+async function saveDiagnostics(){ await sSet(SKEY.diagnostics, DB.diagnostics); }
+async function saveInspections(){ await sSet(SKEY.inspections, DB.inspections); }
+
+/* ===================================================================
+   AUTH
+=================================================================== */
+async function doLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  err.textContent = '';
+  await loadAll();
+  const found = DB.users.find(x=>x.username===u && x.password===p);
+  if(!found){ err.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة'; return; }
+  CURRENT_USER = found;
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  renderShell();
+  switchTab('dashboard');
+}
+function doLogout(){
+  CURRENT_USER = null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+}
+
+function branchName(id){
+  if(id==='all') return 'كل الفروع';
+  const b = DB.branches.find(x=>x.id===id);
+  return b ? b.name : '—';
+}
+function visibleBranchIds(){
+  if(CURRENT_USER.role==='admin') return DB.branches.map(b=>b.id);
+  return [CURRENT_USER.branchId];
+}
+
+/* ===================================================================
+   SHELL / NAV
+=================================================================== */
+function renderShell(){
+  document.getElementById('sideWorkshopName').textContent = DB.settings.name || 'ورشة السيارات';
+  document.getElementById('sideBranchName').textContent = CURRENT_USER.role==='admin' ? 'جميع الفروع' : branchName(CURRENT_USER.branchId);
+  document.getElementById('sideUserName').textContent = CURRENT_USER.name;
+  document.getElementById('sideUserRole').textContent = CURRENT_USER.role==='admin' ? 'مدير النظام' : 'موظف فرع';
+  document.getElementById('topBranchTag').textContent = CURRENT_USER.role==='admin' ? 'صلاحية: كل الفروع' : ('الفرع: ' + branchName(CURRENT_USER.branchId));
+
+  const logoWrap = document.getElementById('sideLogoWrap');
+  logoWrap.innerHTML = DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:34px;height:34px;border-radius:8px;object-fit:cover;">` : `<div class="no-logo">${(DB.settings.name||'و')[0]}</div>`;
+
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    const tab = n.dataset.tab;
+    if((tab==='users' || tab==='branches' || tab==='settings') && CURRENT_USER.role!=='admin'){
+      n.classList.add('hidden');
+    } else {
+      n.classList.remove('hidden');
+    }
+  });
+}
+
+const TAB_TITLES = {
+  dashboard:'لوحة التحكم', invoices:'الفواتير', diagnostics:'فحص حالة السيارات',
+  inspections:'فحص أجزاء السيارة', reports:'التقارير', branches:'الفروع', users:'المستخدمون', settings:'إعدادات الورشة'
+};
+
+function switchTab(tab){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.tab===tab));
+  document.getElementById('pageTitle').textContent = TAB_TITLES[tab];
+  const renderers = {
+    dashboard: renderDashboard, invoices: renderInvoices, diagnostics: renderDiagnostics,
+    inspections: renderInspections,
+    reports: renderReports, branches: renderBranches, users: renderUsers, settings: renderSettings
+  };
+  renderers[tab]();
+}
+
+function money(n){ return (Number(n)||0).toLocaleString('ar-EG',{maximumFractionDigits:2}); }
+function escapeHtml(s){ return (s===undefined||s===null)?'':String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ===================================================================
+   DASHBOARD
+=================================================================== */
+function renderDashboard(){
+  const ids = visibleBranchIds();
+  const invs = DB.invoices.filter(i=>ids.includes(i.branchId));
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthInvs = invs.filter(i=>new Date(i.date) >= startOfMonth);
+  const totalMonth = monthInvs.reduce((s,i)=>s+Number(i.total||0),0);
+  const totalAll = invs.reduce((s,i)=>s+Number(i.total||0),0);
+  const openDiag = DB.diagnostics.filter(d=>ids.includes(d.branchId) && d.status!=='fixed').length;
+
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div class="grid grid-4" style="margin-bottom:20px;">
+      <div class="stat"><div class="lbl">فواتير هذا الشهر</div><div class="val">${monthInvs.length}</div><div class="sub">إجمالي: ${money(totalMonth)} ${escapeHtml(DB.settings.currency)}</div></div>
+      <div class="stat"><div class="lbl">إجمالي المبيعات (كل الوقت)</div><div class="val">${money(totalAll)}</div><div class="sub">${escapeHtml(DB.settings.currency)}</div></div>
+      <div class="stat"><div class="lbl">عمليات فحص مفتوحة</div><div class="val">${openDiag}</div><div class="sub">تحتاج متابعة</div></div>
+      <div class="stat"><div class="lbl">عدد الفروع${CURRENT_USER.role==='admin'?'':' (فرعك)'}</div><div class="val">${CURRENT_USER.role==='admin'?DB.branches.length:1}</div><div class="sub">${CURRENT_USER.role==='admin'?'إجمالي الفروع المسجلة':branchName(CURRENT_USER.branchId)}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>آخر الفواتير</h3><button class="btn btn-yellow btn-sm" onclick="switchTab('invoices')">عرض الكل</button></div>
+      ${invoiceTableHtml(invs.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6))}
+    </div>`;
+}
+
+/* ===================================================================
+   INVOICES
+=================================================================== */
+function invoiceTableHtml(list){
+  if(list.length===0) return `<div class="empty">لا توجد فواتير بعد</div>`;
+  return `<table><thead><tr>
+      <th>رقم الفاتورة</th><th>رقم السيارة</th><th>العميل</th><th>الفرع</th><th>التاريخ</th><th>الإجمالي</th><th>الحالة</th><th></th>
+    </tr></thead><tbody>
+    ${list.map(i=>`
+      <tr>
+        <td>${escapeHtml(i.invoiceNo)}</td>
+        <td><b>${escapeHtml(i.carNumber)}</b></td>
+        <td>${escapeHtml(i.customerName)}</td>
+        <td><span class="badge badge-branch">${escapeHtml(branchName(i.branchId))}</span></td>
+        <td>${escapeHtml(i.date)}</td>
+        <td><b>${money(i.total)}</b></td>
+        <td><span class="badge ${i.status==='paid'?'badge-paid':'badge-open'}">${i.status==='paid'?'مدفوعة':'غير مدفوعة'}</span></td>
+        <td><button class="btn btn-outline btn-sm" onclick="viewInvoice('${i.id}')">عرض</button></td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function renderInvoices(){
+  const ids = visibleBranchIds();
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div class="toolbar">
+      <input id="invSearch" placeholder="بحث برقم السيارة أو اسم العميل..." oninput="renderInvoicesList()" style="min-width:230px;">
+      <select id="invBranchFilter" onchange="renderInvoicesList()">
+        <option value="all">كل الفروع المتاحة</option>
+        ${DB.branches.filter(b=>ids.includes(b.id)).map(b=>`<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('')}
+      </select>
+      <select id="invStatusFilter" onchange="renderInvoicesList()">
+        <option value="">كل الحالات</option>
+        <option value="unpaid">غير مدفوعة</option>
+        <option value="paid">مدفوعة</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn btn-yellow" onclick="openInvoiceModal()">+ فاتورة جديدة</button>
+    </div>
+    <div class="card"><div id="invListWrap"></div></div>`;
+  renderInvoicesList();
+}
+function renderInvoicesList(){
+  const ids = visibleBranchIds();
+  const q = (document.getElementById('invSearch').value||'').trim().toLowerCase();
+  const bf = document.getElementById('invBranchFilter').value;
+  const sf = document.getElementById('invStatusFilter').value;
+  let list = DB.invoices.filter(i=>ids.includes(i.branchId));
+  if(bf!=='all') list = list.filter(i=>i.branchId===bf);
+  if(sf) list = list.filter(i=>i.status===sf);
+  if(q) list = list.filter(i=> (i.carNumber||'').toLowerCase().includes(q) || (i.customerName||'').toLowerCase().includes(q) || (i.invoiceNo||'').toLowerCase().includes(q));
+  list.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById('invListWrap').innerHTML = invoiceTableHtml(list);
+}
+
+function nextInvoiceNo(){
+  const n = DB.invoices.length + 1;
+  return 'INV-' + String(n).padStart(5,'0');
+}
+
+let TEMP_ITEMS = [];
+let LAST_TECHNICIAN = '';
+let LAST_ENGINEER = '';
+function openInvoiceModal(){
+  TEMP_ITEMS = [{id:uid('it'), desc:'', price:0, qty:1}];
+  const ids = visibleBranchIds();
+  const defaultBranch = CURRENT_USER.role==='admin' ? (DB.branches[0]?.id||'') : CURRENT_USER.branchId;
+  document.getElementById('modalContent').innerHTML = `
+    <h3>فاتورة جديدة</h3>
+    <div class="two-col-modal">
+      <div class="field"><label class="req">رقم السيارة</label><input id="fCar" placeholder="مثال: أ ب ج 1234"></div>
+      <div class="field"><label>اسم العميل / الشركة المطلوب منها</label><input id="fCustomer" placeholder="اسم العميل"></div>
+      <div class="field"><label>رقم واتساب العميل</label><input id="fPhone" type="tel" placeholder="مثال: 05xxxxxxxx أو 9665xxxxxxxx"></div>
+      <div class="field"><label>الفرع</label>
+        <select id="fBranch">${DB.branches.filter(b=>ids.includes(b.id)).map(b=>`<option value="${b.id}" ${b.id===defaultBranch?'selected':''}>${escapeHtml(b.name)}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>التاريخ</label><input id="fDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="field"><label>اسم الفني</label><input id="fTechnician" value="${escapeHtml(LAST_TECHNICIAN)}" placeholder="اسم الفني المنفذ للعمل"></div>
+      <div class="field"><label>اسم المهندس المسؤول</label><input id="fEngineer" value="${escapeHtml(LAST_ENGINEER)}" placeholder="اسم المهندس المسؤول"></div>
+    </div>
+    <div class="field"><label>حالة الدفع</label>
+      <select id="fStatus"><option value="unpaid">غير مدفوعة</option><option value="paid">مدفوعة</option></select>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--line);margin:14px 0;">
+    <b style="font-size:13.5px;">عناصر الفاتورة (قطع الغيار / الخدمات)</b>
+    <div id="itemsWrap" style="margin-top:10px;"></div>
+    <button class="btn btn-outline btn-sm" onclick="addItemRow()">+ إضافة عنصر</button>
+    <div style="text-align:left;margin-top:14px;font-size:15px;font-weight:800;">الإجمالي: <span id="fTotal">0</span> ${escapeHtml(DB.settings.currency)}</div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="submitInvoice()">حفظ الفاتورة</button>
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+    </div>`;
+  renderItemsRows();
+  openModal();
+}
+function renderItemsRows(){
+  document.getElementById('itemsWrap').innerHTML = TEMP_ITEMS.map((it,idx)=>`
+    <div class="items-row">
+      <input placeholder="اسم القطعة / الخدمة" value="${escapeHtml(it.desc)}" oninput="TEMP_ITEMS[${idx}].desc=this.value">
+      <input type="number" placeholder="السعر" value="${it.price||''}" oninput="TEMP_ITEMS[${idx}].price=this.value; updateTotalPreview();">
+      <input type="number" placeholder="الكمية" value="${it.qty||''}" oninput="TEMP_ITEMS[${idx}].qty=this.value; updateTotalPreview();">
+      <input disabled value="${money((it.price||0)*(it.qty||0))}">
+      <button class="rm-item" onclick="removeItemRow(${idx})">حذف</button>
+    </div>`).join('');
+  updateTotalPreview();
+}
+function addItemRow(){ TEMP_ITEMS.push({id:uid('it'), desc:'', price:0, qty:1}); renderItemsRows(); }
+function removeItemRow(idx){ TEMP_ITEMS.splice(idx,1); renderItemsRows(); }
+function updateTotalPreview(){
+  const total = TEMP_ITEMS.reduce((s,it)=>s+(Number(it.price)||0)*(Number(it.qty)||0),0);
+  const el = document.getElementById('fTotal'); if(el) el.textContent = money(total);
+}
+async function submitInvoice(){
+  const car = document.getElementById('fCar').value.trim();
+  if(!car){ alert('يرجى إدخال رقم السيارة'); return; }
+  const items = TEMP_ITEMS.filter(it=>it.desc.trim()!=='').map(it=>({desc:it.desc, price:Number(it.price)||0, qty:Number(it.qty)||0, total:(Number(it.price)||0)*(Number(it.qty)||0)}));
+  const total = items.reduce((s,it)=>s+it.total,0);
+  const technician = document.getElementById('fTechnician').value.trim();
+  const engineer = document.getElementById('fEngineer').value.trim();
+  LAST_TECHNICIAN = technician; LAST_ENGINEER = engineer;
+  const inv = {
+    id: uid('inv'), invoiceNo: nextInvoiceNo(), carNumber: car,
+    customerName: document.getElementById('fCustomer').value.trim(),
+    customerPhone: document.getElementById('fPhone').value.trim(),
+    branchId: document.getElementById('fBranch').value,
+    date: document.getElementById('fDate').value,
+    status: document.getElementById('fStatus').value,
+    technician, engineer,
+    items, total, createdBy: CURRENT_USER.username
+  };
+  DB.invoices.push(inv);
+  await saveInvoices();
+  closeModal();
+  renderInvoices();
+  viewInvoice(inv.id);
+}
+
+function viewInvoice(id){
+  const inv = DB.invoices.find(i=>i.id===id);
+  if(!inv) return;
+  document.getElementById('modalContent').innerHTML = `
+    <h3>فاتورة ${escapeHtml(inv.invoiceNo)}</h3>
+    <div id="invoicePreviewWrap" style="overflow:auto;border:1px solid var(--line);border-radius:10px;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn btn-yellow" onclick="downloadInvoicePdf('${inv.id}')">⬇ حفظ PDF</button>
+      <button class="btn btn-primary" onclick="sendInvoiceWhatsapp('${inv.id}')">📲 إرسال واتساب</button>
+      <button class="btn btn-outline" onclick="closeModal()">إغلاق</button>
+    </div>
+    <div class="small-note">${inv.customerPhone ? `ملاحظة: سيتم تنزيل ملف PDF للفاتورة على جهازك تلقائياً، ثم فتح محادثة واتساب مباشرة مع رقم العميل (${escapeHtml(inv.customerPhone)}) مع رسالة جاهزة. لإرسال الفاتورة نفسها اضغط على أيقونة 📎 داخل المحادثة واختر الملف الذي تم تنزيله (واتساب لا يسمح لأي موقع بإرفاق ملف تلقائياً في محادثة محددة، وهذا قيد من واتساب نفسه لا علاقة له بالبرنامج).` : `ملاحظة: لم يتم إدخال رقم واتساب للعميل، سيتم فتح واتساب بدون تحديد جهة اتصال. على الأجهزة التي تدعم المشاركة سيتم إرفاق ملف PDF مباشرة عند اختيار واتساب من قائمة المشاركة.`}</div>`;
+  document.getElementById('invoicePreviewWrap').innerHTML = buildInvoiceHtml(inv);
+  openModal();
+}
+
+function buildInvoiceHtml(inv){
+  const s = DB.settings;
+  const itemsRows = inv.items.map((it,idx)=>`
+    <tr>
+      <td>${idx+1}</td>
+      <td class="desc">${escapeHtml(it.desc)}</td>
+      <td>${money(it.price)}</td>
+      <td>${money(it.qty)}</td>
+      <td><b>${money(it.total)}</b></td>
+    </tr>`).join('');
+  const logoHtml = s.logo ? `<img src="${s.logo}">` : `<div class="placeholder">أضف<br>شعارك</div>`;
+  return `
+  <div id="invoiceSheet">
+    <div class="inv-topbar-black"></div>
+    <div class="inv-top">
+      <div style="position:absolute;top:8px;right:0;width:120px;height:112px;background:#F3B41B;clip-path:polygon(100% 0,100% 100%,40% 100%);"></div>
+      <div style="position:absolute;top:8px;left:0;width:70px;height:112px;background:#2B2B2E;clip-path:polygon(0 0,100% 0,0 100%);"></div>
+      <div class="inv-head-row">
+        <div>
+          <div class="inv-title-ar">فاتورة</div>
+          <div class="inv-reg">
+            السجل التجاري: ${escapeHtml(s.commercialRecord||'—')}<br>
+            الرقم الضريبي: ${escapeHtml(s.taxNumber||'—')}<br>
+            رقم الفاتورة: ${escapeHtml(inv.invoiceNo)}
+          </div>
+        </div>
+        <div class="inv-logo-box">${logoHtml}</div>
+      </div>
+    </div>
+    <div class="inv-meta">
+      <div>التاريخ: ${escapeHtml(inv.date)}</div>
+      <div>${escapeHtml(s.name)}</div>
+    </div>
+    <div class="inv-req">المطلوب من: <span>${escapeHtml(inv.customerName || 'عميل نقدي')} — رقم السيارة: ${escapeHtml(inv.carNumber)}${inv.customerPhone?(' — جوال: '+escapeHtml(inv.customerPhone)):''}</span></div>
+    <table class="inv-table">
+      <thead><tr><th>م</th><th>الصنف</th><th>السعر</th><th>الكمية</th><th>الإجمالي</th></tr></thead>
+      <tbody>${itemsRows}</tbody>
+    </table>
+    <div class="inv-total-row"><b>المجموع</b><b>${money(inv.total)} ${escapeHtml(s.currency)}</b></div>
+    ${(inv.technician || inv.engineer) ? `<div style="display:flex;justify-content:space-between;padding:14px 30px 0;font-size:12.5px;color:var(--charcoal);">
+      ${inv.technician ? `<div><span style="color:var(--steel);">الفني المسؤول:</span> <b>${escapeHtml(inv.technician)}</b></div>` : '<div></div>'}
+      ${inv.engineer ? `<div><span style="color:var(--steel);">المهندس المسؤول:</span> <b>${escapeHtml(inv.engineer)}</b></div>` : ''}
+    </div>` : ''}
+    <div class="inv-sign">بتوقيعه ..........................</div>
+    <div class="inv-thanks">${escapeHtml(s.thanksNote || 'شكراً لتعاملكم معنا')}</div>
+    <div class="inv-foot">
+      <span>📞 ${escapeHtml(s.phone||'—')}</span>
+      <span>✉ ${escapeHtml(s.email||'—')}</span>
+      <span>🌐 ${escapeHtml(s.website||'—')}</span>
+      <span>📍 ${escapeHtml(s.address||'—')}</span>
+    </div>
+  </div>`;
+}
+
+async function downloadInvoicePdf(id){
+  const inv = DB.invoices.find(i=>i.id===id);
+  const host = document.getElementById('printHost');
+  host.innerHTML = buildInvoiceHtml(inv);
+  const target = host.querySelector('#invoiceSheet');
+  const canvas = await html2canvas(target, {scale:2, backgroundColor:'#ffffff'});
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p','mm','a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const imgWidth = pageWidth - 20;
+  const imgHeight = canvas.height * imgWidth / canvas.width;
+  pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+  pdf.save(`فاتورة-${inv.carNumber}-${inv.invoiceNo}.pdf`);
+  host.innerHTML='';
+}
+
+/* Turn a locally-typed phone number into a wa.me-ready international digit string.
+   - strips spaces, dashes, parentheses, and a leading +
+   - if the number starts with a local trunk "0", replaces it with the workshop's default country code */
+function formatPhoneForWhatsapp(rawPhone){
+  if(!rawPhone) return '';
+  let digits = String(rawPhone).replace(/[^\d]/g, '');
+  if(!digits) return '';
+  const cc = (DB.settings.defaultCountryCode || '').replace(/[^\d]/g,'');
+  if(digits.startsWith('00')) digits = digits.slice(2);
+  if(digits.startsWith('0') && cc){ digits = cc + digits.slice(1); }
+  return digits;
+}
+
+async function sendInvoiceWhatsapp(id){
+  const inv = DB.invoices.find(i=>i.id===id);
+  const s = DB.settings;
+  const waNumber = formatPhoneForWhatsapp(inv.customerPhone);
+  const text = waNumber
+    ? `فاتورة رقم: ${inv.invoiceNo}\nرقم السيارة: ${inv.carNumber}\nالإجمالي: ${money(inv.total)} ${s.currency}\nمن: ${s.name}\n${s.thanksNote||''}\n\n(مرفق ملف الفاتورة PDF - جرى تنزيله على جهازك، يرجى إرفاقه بالضغط على 📎 في المحادثة)`
+    : `فاتورة رقم: ${inv.invoiceNo}\nرقم السيارة: ${inv.carNumber}\nالعميل: ${inv.customerName||'—'}\nالإجمالي: ${money(inv.total)} ${s.currency}\nمن: ${s.name}\n${s.thanksNote||''}`;
+
+  const host = document.getElementById('printHost');
+  host.innerHTML = buildInvoiceHtml(inv);
+  const target = host.querySelector('#invoiceSheet');
+  let file = null;
+  try{
+    const canvas = await html2canvas(target, {scale:2, backgroundColor:'#ffffff'});
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const imgWidth = pageWidth - 20;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+    if(waNumber){
+      // We're targeting a specific contact: WhatsApp's web link can't auto-attach a file to
+      // a specific chat (no browser/WhatsApp API allows that), so the best we can do is save
+      // the PDF to the device now and open that exact chat with instructions to attach it.
+      pdf.save(`فاتورة-${inv.carNumber}.pdf`);
+    } else {
+      const blob = pdf.output('blob');
+      file = new File([blob], `فاتورة-${inv.carNumber}.pdf`, {type:'application/pdf'});
+    }
+  }catch(e){ /* continue even if PDF generation fails, at least send the text */ }
+  host.innerHTML='';
+
+  // No specific contact chosen: native share lets the person pick WhatsApp and a contact,
+  // and the file rides along automatically.
+  if(!waNumber && file && navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title:'فاتورة', text}); return; }
+    catch(e){ /* fall through to wa.me link below */ }
+  }
+  const url = waNumber
+    ? `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`
+    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
+}
+
+/* ===================================================================
+   DIAGNOSTICS
+=================================================================== */
+function renderDiagnostics(){
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div class="toolbar">
+      <input id="diagSearch" placeholder="بحث برقم السيارة..." oninput="renderDiagList()" style="min-width:230px;">
+      <div class="spacer"></div>
+      <button class="btn btn-yellow" onclick="openDiagModal()">+ تقرير فحص جديد</button>
+    </div>
+    <div class="card"><div id="diagListWrap"></div></div>`;
+  renderDiagList();
+}
+function diagTableHtml(list){
+  if(list.length===0) return `<div class="empty">لا توجد تقارير فحص بعد</div>`;
+  return `<table><thead><tr><th>رقم السيارة</th><th>الفرع</th><th>التاريخ</th><th>الأعطال</th><th>الحالة</th><th></th></tr></thead><tbody>
+    ${list.map(d=>`
+      <tr>
+        <td><b>${escapeHtml(d.carNumber)}</b></td>
+        <td><span class="badge badge-branch">${escapeHtml(branchName(d.branchId))}</span></td>
+        <td>${escapeHtml(d.date)}</td>
+        <td style="max-width:260px;white-space:normal;">${escapeHtml(d.issues)}</td>
+        <td><span class="status-tag ${DIAG_STATUS[d.status].cls}">${DIAG_STATUS[d.status].label}</span></td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="viewDiagReport('${d.id}')">عرض التقرير</button>
+          <button class="btn btn-outline btn-sm" onclick="editDiag('${d.id}')">تعديل</button>
+        </td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+function renderDiagList(){
+  const ids = visibleBranchIds();
+  const q = (document.getElementById('diagSearch').value||'').trim().toLowerCase();
+  let list = DB.diagnostics.filter(d=>ids.includes(d.branchId));
+  if(q) list = list.filter(d=>(d.carNumber||'').toLowerCase().includes(q));
+  list.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById('diagListWrap').innerHTML = diagTableHtml(list);
+}
+function openDiagModal(){
+  const ids = visibleBranchIds();
+  const defaultBranch = CURRENT_USER.role==='admin' ? (DB.branches[0]?.id||'') : CURRENT_USER.branchId;
+  document.getElementById('modalContent').innerHTML = `
+    <h3>تقرير فحص حالة سيارة</h3>
+    <div class="two-col-modal">
+      <div class="field"><label class="req">رقم السيارة</label><input id="dCar"></div>
+      <div class="field"><label>اسم العميل</label><input id="dCustomer"></div>
+      <div class="field"><label>رقم واتساب العميل</label><input id="dPhone" type="tel" placeholder="مثال: 05xxxxxxxx أو 9665xxxxxxxx"></div>
+      <div class="field"><label>الفرع</label><select id="dBranch">${DB.branches.filter(b=>ids.includes(b.id)).map(b=>`<option value="${b.id}" ${b.id===defaultBranch?'selected':''}>${escapeHtml(b.name)}</option>`).join('')}</select></div>
+      <div class="field"><label>التاريخ</label><input id="dDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="field"><label>الحالة</label><select id="dStatus"><option value="open">قيد الفحص</option><option value="progress">قيد الإصلاح</option><option value="fixed">تم الإصلاح</option></select></div>
+      <div class="field"><label>اسم الفني</label><input id="dTechnician" value="${escapeHtml(LAST_TECHNICIAN)}" placeholder="اسم الفني المنفذ للفحص"></div>
+      <div class="field"><label>اسم المهندس المسؤول</label><input id="dEngineer" value="${escapeHtml(LAST_ENGINEER)}" placeholder="اسم المهندس المسؤول"></div>
+    </div>
+    <div class="field"><label>الأعطال المكتشفة</label><textarea id="dIssues" rows="3" placeholder="مثال: تسريب زيت، تلف طرمبة بنزين..."></textarea></div>
+    <div class="field"><label>ملاحظات إضافية</label><textarea id="dNotes" rows="2"></textarea></div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="submitDiag()">حفظ التقرير</button>
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+    </div>`;
+  openModal();
+}
+async function submitDiag(){
+  const car = document.getElementById('dCar').value.trim();
+  if(!car){ alert('يرجى إدخال رقم السيارة'); return; }
+  const technician = document.getElementById('dTechnician').value.trim();
+  const engineer = document.getElementById('dEngineer').value.trim();
+  LAST_TECHNICIAN = technician; LAST_ENGINEER = engineer;
+  DB.diagnostics.push({
+    id: uid('dg'), carNumber:car, branchId: document.getElementById('dBranch').value,
+    customerName: document.getElementById('dCustomer').value.trim(),
+    customerPhone: document.getElementById('dPhone').value.trim(),
+    technician, engineer,
+    date: document.getElementById('dDate').value, status: document.getElementById('dStatus').value,
+    issues: document.getElementById('dIssues').value.trim(), notes: document.getElementById('dNotes').value.trim(),
+    createdBy: CURRENT_USER.username
+  });
+  await saveDiagnostics();
+  closeModal();
+  renderDiagList();
+}
+function editDiag(id){
+  const d = DB.diagnostics.find(x=>x.id===id);
+  const ids = visibleBranchIds();
+  document.getElementById('modalContent').innerHTML = `
+    <h3>تعديل تقرير فحص</h3>
+    <div class="two-col-modal">
+      <div class="field"><label class="req">رقم السيارة</label><input id="dCar" value="${escapeHtml(d.carNumber)}"></div>
+      <div class="field"><label>اسم العميل</label><input id="dCustomer" value="${escapeHtml(d.customerName||'')}"></div>
+      <div class="field"><label>رقم واتساب العميل</label><input id="dPhone" type="tel" value="${escapeHtml(d.customerPhone||'')}" placeholder="مثال: 05xxxxxxxx أو 9665xxxxxxxx"></div>
+      <div class="field"><label>الفرع</label><select id="dBranch">${DB.branches.filter(b=>ids.includes(b.id)).map(b=>`<option value="${b.id}" ${b.id===d.branchId?'selected':''}>${escapeHtml(b.name)}</option>`).join('')}</select></div>
+      <div class="field"><label>التاريخ</label><input id="dDate" type="date" value="${escapeHtml(d.date)}"></div>
+      <div class="field"><label>الحالة</label><select id="dStatus">
+        <option value="open" ${d.status==='open'?'selected':''}>قيد الفحص</option>
+        <option value="progress" ${d.status==='progress'?'selected':''}>قيد الإصلاح</option>
+        <option value="fixed" ${d.status==='fixed'?'selected':''}>تم الإصلاح</option>
+      </select></div>
+      <div class="field"><label>اسم الفني</label><input id="dTechnician" value="${escapeHtml(d.technician||'')}" placeholder="اسم الفني المنفذ للفحص"></div>
+      <div class="field"><label>اسم المهندس المسؤول</label><input id="dEngineer" value="${escapeHtml(d.engineer||'')}" placeholder="اسم المهندس المسؤول"></div>
+    </div>
+    <div class="field"><label>الأعطال المكتشفة</label><textarea id="dIssues" rows="3">${escapeHtml(d.issues)}</textarea></div>
+    <div class="field"><label>ملاحظات إضافية</label><textarea id="dNotes" rows="2">${escapeHtml(d.notes)}</textarea></div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="updateDiag('${d.id}')">حفظ التعديلات</button>
+      <button class="btn btn-danger" onclick="deleteDiag('${d.id}')">حذف</button>
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+    </div>`;
+  openModal();
+}
+async function updateDiag(id){
+  const d = DB.diagnostics.find(x=>x.id===id);
+  d.carNumber = document.getElementById('dCar').value.trim();
+  d.customerName = document.getElementById('dCustomer').value.trim();
+  d.customerPhone = document.getElementById('dPhone').value.trim();
+  d.branchId = document.getElementById('dBranch').value;
+  d.date = document.getElementById('dDate').value;
+  d.status = document.getElementById('dStatus').value;
+  d.technician = document.getElementById('dTechnician').value.trim();
+  d.engineer = document.getElementById('dEngineer').value.trim();
+  LAST_TECHNICIAN = d.technician; LAST_ENGINEER = d.engineer;
+  d.issues = document.getElementById('dIssues').value.trim();
+  d.notes = document.getElementById('dNotes').value.trim();
+  await saveDiagnostics();
+  closeModal();
+  renderDiagList();
+}
+async function deleteDiag(id){
+  if(!confirm('حذف هذا التقرير؟')) return;
+  DB.diagnostics = DB.diagnostics.filter(x=>x.id!==id);
+  await saveDiagnostics();
+  closeModal();
+  renderDiagList();
+}
+
+/* Shared: build+download a PDF for a printable report, then either open a targeted
+   WhatsApp chat (with the file already saved to the device, ready to attach) or,
+   when no number is known, hand the file to the native share sheet so the person can
+   pick WhatsApp and a contact themselves with the file attached automatically. */
+async function sendReportWhatsapp(opts){
+  const waNumber = formatPhoneForWhatsapp(opts.phoneRaw);
+  const host = document.getElementById('printHost');
+  host.innerHTML = opts.sheetHtml;
+  const target = host.querySelector('#'+opts.sheetId);
+  let file = null;
+  try{
+    const canvas = await html2canvas(target, {scale:2, backgroundColor:'#ffffff'});
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const imgWidth = pageWidth - 20;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+    if(waNumber){ pdf.save(opts.fileName); }
+    else { const blob = pdf.output('blob'); file = new File([blob], opts.fileName, {type:'application/pdf'}); }
+  }catch(e){ /* still try to send the text even if PDF generation fails */ }
+  host.innerHTML = '';
+  if(!waNumber && file && navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title:'تقرير', text:opts.text}); return; }
+    catch(e){ /* fall through to wa.me link */ }
+  }
+  const url = waNumber
+    ? `https://wa.me/${waNumber}?text=${encodeURIComponent(opts.text)}`
+    : `https://wa.me/?text=${encodeURIComponent(opts.text)}`;
+  window.open(url, '_blank');
+}
+
+function buildDiagReportHtml(d){
+  const s = DB.settings;
+  const logoHtml = s.logo ? `<img src="${s.logo}" style="width:100%;height:100%;object-fit:contain;">` : `<div style="font-size:10px;color:#D99A00;font-weight:800;text-align:center;">أضف<br>شعارك</div>`;
+  return `
+  <div id="diagSheet" style="width:700px;background:#fff;font-family:'Tajawal',sans-serif;color:#1B1B1D;border:1px solid #eee;">
+    <div style="height:8px;background:#1B1B1D;"></div>
+    <div style="padding:20px 26px 10px;display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div style="font-size:22px;font-weight:800;">تقرير فحص حالة سيارة</div>
+        <div style="font-size:12px;color:#8A8D93;margin-top:8px;line-height:1.8;">
+          ${escapeHtml(s.name)}<br>
+          رقم السيارة: <b>${escapeHtml(d.carNumber)}</b><br>
+          العميل: ${escapeHtml(d.customerName||'—')} ${d.customerPhone?('— 📱 '+escapeHtml(d.customerPhone)):''}<br>
+          الفرع: ${escapeHtml(branchName(d.branchId))} — التاريخ: ${escapeHtml(d.date)}
+        </div>
+      </div>
+      <div style="width:76px;height:76px;border:2px solid #F3B41B;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fffdf5;">${logoHtml}</div>
+    </div>
+    <div style="padding:6px 26px 14px;">
+      <span style="font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;" class="status-tag ${DIAG_STATUS[d.status].cls}">${DIAG_STATUS[d.status].label}</span>
+    </div>
+    <div style="padding:0 26px 14px;">
+      <div style="font-size:13px;font-weight:800;margin-bottom:6px;">الأعطال المكتشفة</div>
+      <div style="font-size:12.5px;background:#F2F2F0;border-radius:8px;padding:10px 14px;white-space:pre-wrap;">${escapeHtml(d.issues||'—')}</div>
+    </div>
+    ${d.notes ? `<div style="padding:0 26px 14px;">
+      <div style="font-size:13px;font-weight:800;margin-bottom:6px;">ملاحظات إضافية</div>
+      <div style="font-size:12.5px;background:#F2F2F0;border-radius:8px;padding:10px 14px;white-space:pre-wrap;">${escapeHtml(d.notes)}</div>
+    </div>` : ''}
+    ${(d.technician || d.engineer) ? `<div style="display:flex;justify-content:space-between;padding:0 26px 14px;font-size:12.5px;color:#1B1B1D;">
+      ${d.technician ? `<div><span style="color:#8A8D93;">الفني المسؤول:</span> <b>${escapeHtml(d.technician)}</b></div>` : '<div></div>'}
+      ${d.engineer ? `<div><span style="color:#8A8D93;">المهندس المسؤول:</span> <b>${escapeHtml(d.engineer)}</b></div>` : ''}
+    </div>` : ''}
+    <div style="text-align:center;font-weight:800;font-size:13px;color:#D99A00;padding:6px 0 10px;">${escapeHtml(s.thanksNote || 'شكراً لتعاملكم معنا')}</div>
+    <div style="background:#2B2B2E;color:#e6e6e6;padding:10px 26px;font-size:10.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+      <span>📞 ${escapeHtml(s.phone||'—')}</span><span>✉ ${escapeHtml(s.email||'—')}</span><span>📍 ${escapeHtml(s.address||'—')}</span>
+    </div>
+  </div>`;
+}
+
+function viewDiagReport(id){
+  const d = DB.diagnostics.find(x=>x.id===id);
+  if(!d) return;
+  document.getElementById('modalContent').innerHTML = `
+    <h3>تقرير فحص — ${escapeHtml(d.carNumber)}</h3>
+    <div id="diagReportWrap" style="overflow:auto;border:1px solid var(--line);border-radius:10px;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn btn-yellow" onclick="downloadDiagPdf('${d.id}')">⬇ حفظ PDF</button>
+      <button class="btn btn-primary" onclick="sendDiagWhatsapp('${d.id}')">📲 إرسال واتساب</button>
+      <button class="btn btn-outline" onclick="editDiag('${d.id}')">تعديل</button>
+      <button class="btn btn-outline" onclick="closeModal()">إغلاق</button>
+    </div>
+    <div class="small-note">${d.customerPhone ? `ملاحظة: سيتم تنزيل ملف PDF للتقرير على جهازك تلقائياً، ثم فتح محادثة واتساب مباشرة مع رقم العميل (${escapeHtml(d.customerPhone)}). اضغط 📎 داخل المحادثة واختر الملف المُنزَّل لإرساله (قيد من واتساب نفسه، لا يمكن لأي موقع تجاوزه).` : `ملاحظة: لم يتم إدخال رقم واتساب للعميل، سيتم فتح واتساب بدون تحديد جهة اتصال. على الأجهزة التي تدعم المشاركة سيتم إرفاق ملف PDF مباشرة عند اختيار واتساب.`}</div>`;
+  document.getElementById('diagReportWrap').innerHTML = buildDiagReportHtml(d);
+  openModal();
+}
+
+async function downloadDiagPdf(id){
+  const d = DB.diagnostics.find(x=>x.id===id);
+  const host = document.getElementById('printHost');
+  host.innerHTML = buildDiagReportHtml(d);
+  const target = host.querySelector('#diagSheet');
+  const canvas = await html2canvas(target, {scale:2, backgroundColor:'#ffffff'});
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p','mm','a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const imgWidth = pageWidth - 20;
+  const imgHeight = canvas.height * imgWidth / canvas.width;
+  pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+  pdf.save(`فحص-${d.carNumber}.pdf`);
+  host.innerHTML='';
+}
+
+async function sendDiagWhatsapp(id){
+  const d = DB.diagnostics.find(x=>x.id===id);
+  const s = DB.settings;
+  const waNumber = formatPhoneForWhatsapp(d.customerPhone);
+  const text = waNumber
+    ? `تقرير فحص سيارة\nرقم السيارة: ${d.carNumber}\nالحالة: ${DIAG_STATUS[d.status].label}\nالأعطال: ${d.issues||'—'}\nمن: ${s.name}\n${s.thanksNote||''}\n\n(مرفق ملف الفحص PDF - جرى تنزيله على جهازك، يرجى إرفاقه بالضغط على 📎 في المحادثة)`
+    : `تقرير فحص سيارة\nرقم السيارة: ${d.carNumber}\nالعميل: ${d.customerName||'—'}\nالحالة: ${DIAG_STATUS[d.status].label}\nالأعطال: ${d.issues||'—'}\nمن: ${s.name}\n${s.thanksNote||''}`;
+  await sendReportWhatsapp({ phoneRaw:d.customerPhone, text, sheetHtml:buildDiagReportHtml(d), sheetId:'diagSheet', fileName:`فحص-${d.carNumber}.pdf` });
+}
+
+/* ===================================================================
+   FULL VEHICLE INSPECTION (فحص أجزاء السيارة بالنسب)
+=================================================================== */
+function computeInspectionScores(items){
+  // items: [{cat, name, percentage}]
+  const byCat = {};
+  items.forEach(it=>{
+    if(!byCat[it.cat]) byCat[it.cat] = [];
+    byCat[it.cat].push(it);
+  });
+  const catScores = Object.keys(byCat).map(cat=>{
+    const rated = byCat[cat].filter(it=>itemScore(it)!==null);
+    const avg = rated.length ? rated.reduce((s,it)=>s+itemScore(it),0)/rated.length : null;
+    return {cat, avg, count:byCat[cat].length, rated:rated.length};
+  });
+  const allRated = items.filter(it=>itemScore(it)!==null);
+  const overall = allRated.length ? Math.round(allRated.reduce((s,it)=>s+itemScore(it),0)/allRated.length) : null;
+  return {catScores, overall};
+}
+function scoreColor(pct){
+  if(pct===null) return '#8A8D93';
+  if(pct>=80) return '#2E7D50';
+  if(pct>=50) return '#D99A00';
+  return '#C0392B';
+}
+function scoreBarHtml(pct, height){
+  height = height || 10;
+  const color = scoreColor(pct);
+  const val = pct===null ? 0 : pct;
+  return `<div style="background:#eee;border-radius:20px;height:${height}px;overflow:hidden;">
+    <div style="width:${val}%;height:100%;background:${color};border-radius:20px;"></div>
+  </div>`;
+}
+
+function renderInspections(){
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div class="toolbar">
+      <input id="inspSearch" placeholder="بحث برقم السيارة..." oninput="renderInspList()" style="min-width:230px;">
+      <div class="spacer"></div>
+      <button class="btn btn-yellow" onclick="openInspectionModal()">+ فحص شامل جديد</button>
+    </div>
+    <div class="card"><div id="inspListWrap"></div></div>`;
+  renderInspList();
+}
+function inspTableHtml(list){
+  if(list.length===0) return `<div class="empty">لا توجد تقارير فحص أجزاء بعد</div>`;
+  return `<table><thead><tr><th>رقم السيارة</th><th>الفرع</th><th>التاريخ</th><th style="min-width:160px;">النسبة العامة</th><th></th></tr></thead><tbody>
+    ${list.map(insp=>{
+      const {overall} = computeInspectionScores(insp.items);
+      return `<tr>
+        <td><b>${escapeHtml(insp.carNumber)}</b></td>
+        <td><span class="badge badge-branch">${escapeHtml(branchName(insp.branchId))}</span></td>
+        <td>${escapeHtml(insp.date)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;">${scoreBarHtml(overall)}</div>
+            <b style="color:${scoreColor(overall)};min-width:38px;">${overall===null?'—':overall+'%'}</b>
+          </div>
+        </td>
+        <td><button class="btn btn-outline btn-sm" onclick="viewInspection('${insp.id}')">عرض التقرير</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+}
+function renderInspList(){
+  const ids = visibleBranchIds();
+  const q = (document.getElementById('inspSearch').value||'').trim().toLowerCase();
+  let list = DB.inspections.filter(i=>ids.includes(i.branchId));
+  if(q) list = list.filter(i=>(i.carNumber||'').toLowerCase().includes(q));
+  list.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById('inspListWrap').innerHTML = inspTableHtml(list);
+}
+
+let TEMP_INSP_ITEMS = [];
+function openInspectionModal(){
+  TEMP_INSP_ITEMS = [];
+  CAR_PARTS_TEMPLATE.forEach(group=>{
+    group.items.forEach(name=>{
+      TEMP_INSP_ITEMS.push({cat:group.cat, name, percentage:100});
+    });
+  });
+  const ids = visibleBranchIds();
+  const defaultBranch = CURRENT_USER.role==='admin' ? (DB.branches[0]?.id||'') : CURRENT_USER.branchId;
+  document.getElementById('modalContent').innerHTML = `
+    <h3>فحص شامل لأجزاء السيارة</h3>
+    <div class="two-col-modal">
+      <div class="field"><label class="req">رقم السيارة</label><input id="iCar"></div>
+      <div class="field"><label>اسم العميل</label><input id="iCustomer"></div>
+      <div class="field"><label>رقم واتساب العميل</label><input id="iPhone" type="tel" placeholder="مثال: 05xxxxxxxx أو 9665xxxxxxxx"></div>
+      <div class="field"><label>الفرع</label><select id="iBranch">${DB.branches.filter(b=>ids.includes(b.id)).map(b=>`<option value="${b.id}" ${b.id===defaultBranch?'selected':''}>${escapeHtml(b.name)}</option>`).join('')}</select></div>
+      <div class="field"><label>التاريخ</label><input id="iDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="field"><label>اسم الفني</label><input id="iTechnician" value="${escapeHtml(LAST_TECHNICIAN)}" placeholder="اسم الفني المنفذ للفحص"></div>
+      <div class="field"><label>اسم المهندس المسؤول</label><input id="iEngineer" value="${escapeHtml(LAST_ENGINEER)}" placeholder="اسم المهندس المسؤول"></div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--line);margin:14px 0;">
+    <div id="inspChecklistWrap"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="submitInspection()">حفظ الفحص وعرض التقرير</button>
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+    </div>`;
+  renderInspChecklist();
+  openModal();
+}
+function renderInspChecklist(){
+  const wrap = document.getElementById('inspChecklistWrap');
+  const groups = {};
+  TEMP_INSP_ITEMS.forEach((it,idx)=>{ (groups[it.cat] = groups[it.cat]||[]).push(idx); });
+  wrap.innerHTML = `<div class="small-note" style="margin-bottom:12px;">أدخل نسبة سلامة كل جزء يدويًا من 0 إلى 100 (100% = سليم تمامًا، 0% = تالف بالكامل).</div>` +
+  Object.keys(groups).map(cat=>`
+    <div class="part-cat-title">${escapeHtml(cat)}</div>
+    ${groups[cat].map(idx=>{
+      const it = TEMP_INSP_ITEMS[idx];
+      return `<div class="part-row" data-idx="${idx}">
+        <span>${escapeHtml(it.name)}</span>
+        <input type="number" min="0" max="100" step="1" value="${it.percentage}" oninput="updateInspPartValue(${idx}, this.value)" onblur="clampInspPartValue(${idx}, this)">
+        <span class="part-val" id="pv_${idx}" style="color:${scoreColor(it.percentage)};">${it.percentage}%</span>
+      </div>`;
+    }).join('')}
+  `).join('') +
+  `<div class="overall-box"><span>الحالة العامة المبدئية</span><span id="inspOverallPreview" style="color:${scoreColor(100)};">100%</span></div>`;
+}
+function updateInspPartValue(idx, val){
+  val = Number(val);
+  if(isNaN(val)) val = 0;
+  TEMP_INSP_ITEMS[idx].percentage = val;
+  const pv = document.getElementById('pv_'+idx);
+  if(pv){ pv.textContent = val+'%'; pv.style.color = scoreColor(val); }
+  const vals = TEMP_INSP_ITEMS.map(it=>it.percentage);
+  const avg = Math.round(vals.reduce((s,v)=>s+v,0)/vals.length);
+  const ov = document.getElementById('inspOverallPreview');
+  if(ov){ ov.textContent = avg+'%'; ov.style.color = scoreColor(avg); }
+}
+function clampInspPartValue(idx, el){
+  let val = Number(el.value);
+  if(isNaN(val)) val = 0;
+  val = Math.max(0, Math.min(100, val));
+  el.value = val;
+  updateInspPartValue(idx, val);
+}
+async function submitInspection(){
+  const car = document.getElementById('iCar').value.trim();
+  if(!car){ alert('يرجى إدخال رقم السيارة'); return; }
+  const technician = document.getElementById('iTechnician').value.trim();
+  const engineer = document.getElementById('iEngineer').value.trim();
+  LAST_TECHNICIAN = technician; LAST_ENGINEER = engineer;
+  const insp = {
+    id: uid('insp'), carNumber:car, customerName: document.getElementById('iCustomer').value.trim(),
+    customerPhone: document.getElementById('iPhone').value.trim(),
+    branchId: document.getElementById('iBranch').value, date: document.getElementById('iDate').value,
+    technician, engineer,
+    items: TEMP_INSP_ITEMS.map(it=>({cat:it.cat, name:it.name, percentage:it.percentage})),
+    createdBy: CURRENT_USER.username
+  };
+  DB.inspections.push(insp);
+  await saveInspections();
+  closeModal();
+  renderInspList();
+  viewInspection(insp.id);
+}
+
+function viewInspection(id){
+  const insp = DB.inspections.find(i=>i.id===id);
+  if(!insp) return;
+  document.getElementById('modalContent').innerHTML = `
+    <h3>تقرير فحص أجزاء السيارة — ${escapeHtml(insp.carNumber)}</h3>
+    <div id="inspReportWrap"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn btn-yellow" onclick="downloadInspectionPdf('${insp.id}')">⬇ حفظ PDF</button>
+      <button class="btn btn-primary" onclick="sendInspectionWhatsapp('${insp.id}')">📲 إرسال واتساب</button>
+      <button class="btn btn-danger" onclick="deleteInspection('${insp.id}')">حذف التقرير</button>
+      <button class="btn btn-outline" onclick="closeModal()">إغلاق</button>
+    </div>
+    <div class="small-note">${insp.customerPhone ? `ملاحظة: سيتم تنزيل ملف PDF للتقرير على جهازك تلقائياً، ثم فتح محادثة واتساب مباشرة مع رقم العميل (${escapeHtml(insp.customerPhone)}). اضغط 📎 داخل المحادثة واختر الملف المُنزَّل لإرساله (قيد من واتساب نفسه، لا يمكن لأي موقع تجاوزه).` : `ملاحظة: لم يتم إدخال رقم واتساب للعميل، سيتم فتح واتساب بدون تحديد جهة اتصال. على الأجهزة التي تدعم المشاركة سيتم إرفاق ملف PDF مباشرة عند اختيار واتساب.`}</div>`;
+  document.getElementById('inspReportWrap').innerHTML = buildInspectionReportHtml(insp);
+  openModal();
+}
+async function deleteInspection(id){
+  if(!confirm('حذف هذا تقرير الفحص؟')) return;
+  DB.inspections = DB.inspections.filter(x=>x.id!==id);
+  await saveInspections();
+  closeModal();
+  renderInspList();
+}
+
+function buildInspectionReportHtml(insp){
+  const s = DB.settings;
+  const {catScores, overall} = computeInspectionScores(insp.items);
+  const groups = {};
+  insp.items.forEach(it=>{ (groups[it.cat]=groups[it.cat]||[]).push(it); });
+
+  return `
+  <div id="inspSheet" style="width:720px;background:#fff;font-family:'Tajawal',sans-serif;color:#1B1B1D;border:1px solid #eee;">
+    <div style="height:8px;background:#1B1B1D;"></div>
+    <div style="padding:20px 26px 10px;display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div style="font-size:22px;font-weight:800;">تقرير فحص أجزاء السيارة</div>
+        <div style="font-size:12px;color:#8A8D93;margin-top:6px;">
+          ${escapeHtml(s.name)}<br>
+          رقم السيارة: <b>${escapeHtml(insp.carNumber)}</b> — العميل: ${escapeHtml(insp.customerName||'—')}${insp.customerPhone?(' — 📱 '+escapeHtml(insp.customerPhone)):''}<br>
+          الفرع: ${escapeHtml(branchName(insp.branchId))} — التاريخ: ${escapeHtml(insp.date)}
+          ${(insp.technician || insp.engineer) ? `<br>${insp.technician?('الفني: <b>'+escapeHtml(insp.technician)+'</b>'):''}${(insp.technician && insp.engineer)?' — ':''}${insp.engineer?('المهندس المسؤول: <b>'+escapeHtml(insp.engineer)+'</b>'):''}` : ''}
+        </div>
+      </div>
+      <div style="text-align:center;min-width:110px;">
+        <div style="font-size:34px;font-weight:800;color:${scoreColor(overall)};">${overall===null?'—':overall+'%'}</div>
+        <div style="font-size:11px;color:#8A8D93;">الحالة العامة</div>
+      </div>
+    </div>
+    <div style="padding:0 26px 16px;">${scoreBarHtml(overall, 12)}</div>
+    ${catScores.map(cs=>`
+      <div style="padding:0 26px 4px;">
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:4px;">
+          <span>${escapeHtml(cs.cat)}</span><span style="color:${scoreColor(cs.avg)};">${cs.avg===null?'—':Math.round(cs.avg)+'%'}</span>
+        </div>
+        <div style="margin-bottom:10px;">${scoreBarHtml(cs.avg,8)}</div>
+      </div>`).join('')}
+    <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+      <thead><tr style="background:#1B1B1D;color:#fff;"><th style="padding:8px 12px;font-size:12px;text-align:right;">الجزء</th><th style="padding:8px 12px;font-size:12px;">الفئة</th><th style="padding:8px 12px;font-size:12px;width:130px;">النسبة</th><th style="padding:8px 12px;font-size:12px;">الحالة</th></tr></thead>
+      <tbody>
+      ${insp.items.map(it=>{
+        const pct = itemScore(it);
+        return `<tr>
+          <td style="padding:7px 12px;border-bottom:1px solid #E4E3DF;font-size:12.5px;">${escapeHtml(it.name)}</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #E4E3DF;font-size:11.5px;color:#8A8D93;text-align:center;">${escapeHtml(it.cat)}</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #E4E3DF;text-align:center;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="flex:1;">${scoreBarHtml(pct,7)}</div>
+              <b style="font-size:11.5px;color:${scoreColor(pct)};min-width:34px;">${pct===null?'—':pct+'%'}</b>
+            </div>
+          </td>
+          <td style="padding:7px 12px;border-bottom:1px solid #E4E3DF;text-align:center;">
+            <span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;background:${pct===null?'#eeeeee':(pct>=85?'#dff3e6':pct>=65?'#eef0ff':pct>=40?'#fde9c8':'#fbeceb')};color:${scoreColor(pct)};">${conditionLabel(pct)}</span>
+          </td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>
+    <div style="text-align:center;font-weight:800;font-size:13px;color:#D99A00;padding:14px 0 6px;">${escapeHtml(s.thanksNote || 'شكراً لتعاملكم معنا')}</div>
+    <div style="background:#2B2B2E;color:#e6e6e6;padding:10px 26px;font-size:10.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+      <span>📞 ${escapeHtml(s.phone||'—')}</span><span>✉ ${escapeHtml(s.email||'—')}</span><span>📍 ${escapeHtml(s.address||'—')}</span>
+    </div>
+  </div>`;
+}
+
+async function downloadInspectionPdf(id){
+  const insp = DB.inspections.find(i=>i.id===id);
+  const host = document.getElementById('printHost');
+  host.innerHTML = buildInspectionReportHtml(insp);
+  const target = host.querySelector('#inspSheet');
+  const canvas = await html2canvas(target, {scale:2, backgroundColor:'#ffffff'});
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p','mm','a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const imgWidth = pageWidth - 20;
+  const imgHeight = canvas.height * imgWidth / canvas.width;
+  pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+  pdf.save(`فحص-اجزاء-${insp.carNumber}.pdf`);
+  host.innerHTML='';
+}
+
+async function sendInspectionWhatsapp(id){
+  const insp = DB.inspections.find(i=>i.id===id);
+  const s = DB.settings;
+  const { overall } = computeInspectionScores(insp.items);
+  const waNumber = formatPhoneForWhatsapp(insp.customerPhone);
+  const text = waNumber
+    ? `تقرير فحص شامل لأجزاء السيارة\nرقم السيارة: ${insp.carNumber}\nالحالة العامة: ${overall===null?'—':overall+'%'}\nمن: ${s.name}\n${s.thanksNote||''}\n\n(مرفق ملف الفحص PDF - جرى تنزيله على جهازك، يرجى إرفاقه بالضغط على 📎 في المحادثة)`
+    : `تقرير فحص شامل لأجزاء السيارة\nرقم السيارة: ${insp.carNumber}\nالعميل: ${insp.customerName||'—'}\nالحالة العامة: ${overall===null?'—':overall+'%'}\nمن: ${s.name}\n${s.thanksNote||''}`;
+  await sendReportWhatsapp({ phoneRaw:insp.customerPhone, text, sheetHtml:buildInspectionReportHtml(insp), sheetId:'inspSheet', fileName:`فحص-اجزاء-${insp.carNumber}.pdf` });
+}
+
+/* ===================================================================
+   REPORTS
+=================================================================== */
+let REPORTS_TAB = 'sales';
+function renderReports(){
+  const ids = visibleBranchIds();
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div class="sub-tabs">
+      <button class="sub-tab-btn ${REPORTS_TAB==='sales'?'active':''}" onclick="setReportsTab('sales')">📊 تقارير المبيعات</button>
+      <button class="sub-tab-btn ${REPORTS_TAB==='parts'?'active':''}" onclick="setReportsTab('parts')">🚗 تقارير حالة أجزاء السيارات</button>
+    </div>
+    <div class="toolbar">
+      <select id="repPeriod" onchange="renderCurrentReportBody()">
+        <option value="week">أسبوعي</option>
+        <option value="month" selected>شهري</option>
+        <option value="year">سنوي</option>
+      </select>
+      <select id="repBranch" onchange="renderCurrentReportBody()">
+        <option value="all">كل الفروع المتاحة (منفصلة)</option>
+        ${DB.branches.filter(b=>ids.includes(b.id)).map(b=>`<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div id="reportBody"></div>`;
+  renderCurrentReportBody();
+}
+function setReportsTab(tab){ REPORTS_TAB = tab; renderReports(); }
+function renderCurrentReportBody(){
+  if(REPORTS_TAB==='parts') renderPartsReportBody(); else renderReportBody();
+}
+function periodStart(period){
+  const now = new Date();
+  if(period==='week'){ const d=new Date(now); d.setDate(now.getDate()-7); return d; }
+  if(period==='month'){ return new Date(now.getFullYear(), now.getMonth(), 1); }
+  return new Date(now.getFullYear(), 0, 1);
+}
+function renderReportBody(){
+  const period = document.getElementById('repPeriod').value;
+  const branchSel = document.getElementById('repBranch').value;
+  const ids = visibleBranchIds();
+  const start = periodStart(period);
+  const branchesToShow = branchSel==='all' ? DB.branches.filter(b=>ids.includes(b.id)) : DB.branches.filter(b=>b.id===branchSel);
+
+  const body = document.getElementById('reportBody');
+  body.innerHTML = branchesToShow.map(b=>{
+    const invs = DB.invoices.filter(i=>i.branchId===b.id && new Date(i.date) >= start);
+    const total = invs.reduce((s,i)=>s+Number(i.total||0),0);
+    const paid = invs.filter(i=>i.status==='paid').reduce((s,i)=>s+Number(i.total||0),0);
+    const unpaid = total - paid;
+    const diagCount = DB.diagnostics.filter(d=>d.branchId===b.id && new Date(d.date) >= start).length;
+    return `
+    <div class="card">
+      <div class="card-head"><h3>${escapeHtml(b.name)} — تقرير ${period==='week'?'أسبوعي':period==='month'?'شهري':'سنوي'}</h3>
+      <span class="badge badge-branch">${invs.length} فاتورة</span></div>
+      <div class="grid grid-4" style="margin-bottom:14px;">
+        <div class="stat"><div class="lbl">إجمالي المبيعات</div><div class="val">${money(total)}</div></div>
+        <div class="stat"><div class="lbl">مدفوع</div><div class="val" style="color:var(--good);">${money(paid)}</div></div>
+        <div class="stat"><div class="lbl">غير مدفوع</div><div class="val" style="color:var(--bad);">${money(unpaid)}</div></div>
+        <div class="stat"><div class="lbl">عمليات فحص</div><div class="val">${diagCount}</div></div>
+      </div>
+      ${invoiceTableHtml(invs.slice().sort((a,b2)=>new Date(b2.date)-new Date(a.date)))}
+    </div>`;
+  }).join('') || `<div class="empty">لا توجد فروع لعرضها</div>`;
+}
+
+function renderPartsReportBody(){
+  const period = document.getElementById('repPeriod').value;
+  const branchSel = document.getElementById('repBranch').value;
+  const ids = visibleBranchIds();
+  const start = periodStart(period);
+  const branchesToShow = branchSel==='all' ? DB.branches.filter(b=>ids.includes(b.id)) : DB.branches.filter(b=>b.id===branchSel);
+  const periodLabel = period==='week'?'أسبوعي':period==='month'?'شهري':'سنوي';
+
+  const body = document.getElementById('reportBody');
+  body.innerHTML = branchesToShow.map(b=>{
+    const insps = DB.inspections.filter(i=>i.branchId===b.id && new Date(i.date) >= start);
+    if(insps.length===0){
+      return `<div class="card">
+        <div class="card-head"><h3>${escapeHtml(b.name)} — تقرير ${periodLabel} لحالة الأجزاء</h3><span class="badge badge-branch">0 فحص</span></div>
+        <div class="empty">لا توجد تقارير فحص أجزاء في هذه الفترة</div>
+      </div>`;
+    }
+    // average % per part name across all inspections in this branch/period
+    const partTotals = {}; // name -> {sum, count, cat}
+    insps.forEach(insp=>{
+      insp.items.forEach(it=>{
+        const sc = itemScore(it);
+        if(sc===null) return;
+        if(!partTotals[it.name]) partTotals[it.name] = {sum:0, count:0, cat:it.cat};
+        partTotals[it.name].sum += sc;
+        partTotals[it.name].count += 1;
+      });
+    });
+    const partAverages = Object.keys(partTotals).map(name=>({
+      name, cat:partTotals[name].cat, avg: Math.round(partTotals[name].sum/partTotals[name].count)
+    }));
+    const overallAvg = partAverages.length ? Math.round(partAverages.reduce((s,p)=>s+p.avg,0)/partAverages.length) : null;
+    // group by category
+    const byCat = {};
+    partAverages.forEach(p=>{ (byCat[p.cat]=byCat[p.cat]||[]).push(p); });
+    const worst = partAverages.slice().sort((a,b2)=>a.avg-b2.avg).slice(0,5);
+
+    return `
+    <div class="card">
+      <div class="card-head"><h3>${escapeHtml(b.name)} — تقرير ${periodLabel} لحالة الأجزاء</h3><span class="badge badge-branch">${insps.length} فحص</span></div>
+      <div class="grid grid-3" style="margin-bottom:16px;">
+        <div class="stat"><div class="lbl">متوسط الحالة العامة</div><div class="val" style="color:${scoreColor(overallAvg)};">${overallAvg===null?'—':overallAvg+'%'}</div></div>
+        <div class="stat"><div class="lbl">عدد السيارات المفحوصة</div><div class="val">${insps.length}</div></div>
+        <div class="stat"><div class="lbl">أجزاء بحاجة اهتمام (أقل من 50%)</div><div class="val" style="color:var(--bad);">${partAverages.filter(p=>p.avg<50).length}</div></div>
+      </div>
+      <b style="font-size:13.5px;display:block;margin-bottom:8px;">متوسط الحالة حسب الفئة</b>
+      ${Object.keys(byCat).map(cat=>{
+        const catAvg = Math.round(byCat[cat].reduce((s,p)=>s+p.avg,0)/byCat[cat].length);
+        return `<div class="plabel-row"><span>${escapeHtml(cat)}</span><div>${scoreBarHtml(catAvg,8)}</div><b style="color:${scoreColor(catAvg)};">${catAvg}%</b></div>`;
+      }).join('')}
+      <b style="font-size:13.5px;display:block;margin:16px 0 8px;">الأجزاء الأكثر احتياجًا للمتابعة</b>
+      ${worst.map(p=>`<div class="plabel-row"><span>${escapeHtml(p.name)} <span style="color:var(--steel);font-size:11px;">(${escapeHtml(p.cat)})</span></span><div>${scoreBarHtml(p.avg,8)}</div><b style="color:${scoreColor(p.avg)};">${p.avg}%</b></div>`).join('')}
+    </div>`;
+  }).join('') || `<div class="empty">لا توجد فروع لعرضها</div>`;
+}
+
+/* ===================================================================
+   BRANCHES (admin only)
+=================================================================== */
+function renderBranches(){
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div class="toolbar"><div class="spacer"></div><button class="btn btn-yellow" onclick="openBranchModal()">+ فرع جديد</button></div>
+    <div class="card">
+      <table><thead><tr><th>اسم الفرع</th><th>العنوان</th><th>عدد الفواتير</th><th></th></tr></thead><tbody>
+      ${DB.branches.map(b=>`
+        <tr>
+          <td><b>${escapeHtml(b.name)}</b></td>
+          <td>${escapeHtml(b.address||'—')}</td>
+          <td>${DB.invoices.filter(i=>i.branchId===b.id).length}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="editBranch('${b.id}')">تعديل</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteBranch('${b.id}')">حذف</button>
+          </td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>`;
+}
+function openBranchModal(){
+  document.getElementById('modalContent').innerHTML = `
+    <h3>فرع جديد</h3>
+    <div class="field"><label class="req">اسم الفرع</label><input id="bName"></div>
+    <div class="field"><label>العنوان</label><input id="bAddr"></div>
+    <div style="display:flex;gap:10px;"><button class="btn btn-primary" style="flex:1;" onclick="submitBranch()">حفظ</button><button class="btn btn-outline" onclick="closeModal()">إلغاء</button></div>`;
+  openModal();
+}
+async function submitBranch(){
+  const name = document.getElementById('bName').value.trim();
+  if(!name){ alert('يرجى إدخال اسم الفرع'); return; }
+  DB.branches.push({id:uid('br'), name, address:document.getElementById('bAddr').value.trim()});
+  await saveBranches();
+  closeModal();
+  renderBranches();
+}
+function editBranch(id){
+  const b = DB.branches.find(x=>x.id===id);
+  document.getElementById('modalContent').innerHTML = `
+    <h3>تعديل الفرع</h3>
+    <div class="field"><label class="req">اسم الفرع</label><input id="bName" value="${escapeHtml(b.name)}"></div>
+    <div class="field"><label>العنوان</label><input id="bAddr" value="${escapeHtml(b.address||'')}"></div>
+    <div style="display:flex;gap:10px;"><button class="btn btn-primary" style="flex:1;" onclick="updateBranch('${b.id}')">حفظ</button><button class="btn btn-outline" onclick="closeModal()">إلغاء</button></div>`;
+  openModal();
+}
+async function updateBranch(id){
+  const b = DB.branches.find(x=>x.id===id);
+  b.name = document.getElementById('bName').value.trim();
+  b.address = document.getElementById('bAddr').value.trim();
+  await saveBranches();
+  closeModal();
+  renderBranches();
+}
+async function deleteBranch(id){
+  if(DB.branches.length<=1){ alert('يجب أن يبقى فرع واحد على الأقل'); return; }
+  if(!confirm('حذف هذا الفرع؟ (لن يتم حذف فواتيره المسجلة)')) return;
+  DB.branches = DB.branches.filter(x=>x.id!==id);
+  await saveBranches();
+  renderBranches();
+}
+
+/* ===================================================================
+   USERS (admin only)
+=================================================================== */
+function renderUsers(){
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div class="toolbar"><div class="spacer"></div><button class="btn btn-yellow" onclick="openUserModal()">+ مستخدم جديد</button></div>
+    <div class="card">
+      <table><thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th>الفرع</th><th></th></tr></thead><tbody>
+      ${DB.users.map(u=>`
+        <tr>
+          <td>${escapeHtml(u.name)}</td>
+          <td>${escapeHtml(u.username)}</td>
+          <td>${u.role==='admin'?'مدير النظام':'موظف فرع'}</td>
+          <td>${u.role==='admin'?'كل الفروع':escapeHtml(branchName(u.branchId))}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="editUser('${u.id}')">تعديل</button>
+            ${u.username!=='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">حذف</button>`:''}
+          </td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>`;
+}
+function userFormFields(u){
+  u = u || {name:'',username:'',password:'',role:'staff',branchId:DB.branches[0]?.id||''};
+  return `
+    <div class="two-col-modal">
+      <div class="field"><label class="req">الاسم الكامل</label><input id="uName" value="${escapeHtml(u.name)}"></div>
+      <div class="field"><label class="req">اسم المستخدم</label><input id="uUsername" value="${escapeHtml(u.username)}"></div>
+      <div class="field"><label class="req">كلمة المرور</label><input id="uPassword" value="${escapeHtml(u.password)}"></div>
+      <div class="field"><label>الدور</label><select id="uRole" onchange="document.getElementById('uBranchField').classList.toggle('hidden', this.value==='admin')">
+        <option value="staff" ${u.role==='staff'?'selected':''}>موظف فرع</option>
+        <option value="admin" ${u.role==='admin'?'selected':''}>مدير النظام (كل الفروع)</option>
+      </select></div>
+    </div>
+    <div class="field ${u.role==='admin'?'hidden':''}" id="uBranchField"><label>الفرع</label>
+      <select id="uBranch">${DB.branches.map(b=>`<option value="${b.id}" ${b.id===u.branchId?'selected':''}>${escapeHtml(b.name)}</option>`).join('')}</select>
+    </div>`;
+}
+function openUserModal(){
+  document.getElementById('modalContent').innerHTML = `
+    <h3>مستخدم جديد</h3>${userFormFields()}
+    <div style="display:flex;gap:10px;margin-top:10px;"><button class="btn btn-primary" style="flex:1;" onclick="submitUser()">حفظ</button><button class="btn btn-outline" onclick="closeModal()">إلغاء</button></div>`;
+  openModal();
+}
+async function submitUser(){
+  const username = document.getElementById('uUsername').value.trim();
+  if(!username || !document.getElementById('uName').value.trim() || !document.getElementById('uPassword').value){ alert('يرجى تعبئة الحقول المطلوبة'); return; }
+  if(DB.users.some(u=>u.username===username)){ alert('اسم المستخدم مستخدم من قبل'); return; }
+  const role = document.getElementById('uRole').value;
+  DB.users.push({
+    id:uid('u'), name:document.getElementById('uName').value.trim(), username,
+    password:document.getElementById('uPassword').value, role,
+    branchId: role==='admin' ? 'all' : document.getElementById('uBranch').value
+  });
+  await saveUsers();
+  closeModal();
+  renderUsers();
+}
+function editUser(id){
+  const u = DB.users.find(x=>x.id===id);
+  document.getElementById('modalContent').innerHTML = `
+    <h3>تعديل مستخدم</h3>${userFormFields(u)}
+    <div style="display:flex;gap:10px;margin-top:10px;"><button class="btn btn-primary" style="flex:1;" onclick="updateUser('${u.id}')">حفظ</button><button class="btn btn-outline" onclick="closeModal()">إلغاء</button></div>`;
+  openModal();
+}
+async function updateUser(id){
+  const u = DB.users.find(x=>x.id===id);
+  u.name = document.getElementById('uName').value.trim();
+  u.username = document.getElementById('uUsername').value.trim();
+  u.password = document.getElementById('uPassword').value;
+  u.role = document.getElementById('uRole').value;
+  u.branchId = u.role==='admin' ? 'all' : document.getElementById('uBranch').value;
+  await saveUsers();
+  closeModal();
+  renderUsers();
+  if(CURRENT_USER.id===u.id){ CURRENT_USER = u; renderShell(); }
+}
+async function deleteUser(id){
+  if(!confirm('حذف هذا المستخدم؟')) return;
+  DB.users = DB.users.filter(x=>x.id!==id);
+  await saveUsers();
+  renderUsers();
+}
+
+/* ===================================================================
+   SETTINGS (admin only)
+=================================================================== */
+function renderSettings(){
+  const s = DB.settings;
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div class="card" style="max-width:640px;">
+      <h3>بيانات الورشة</h3>
+      <div class="field"><label class="req">اسم الورشة</label><input id="sName" value="${escapeHtml(s.name)}"></div>
+      <div class="two-col-modal">
+        <div class="field"><label>السجل التجاري</label><input id="sCR" value="${escapeHtml(s.commercialRecord)}"></div>
+        <div class="field"><label>الرقم الضريبي</label><input id="sTax" value="${escapeHtml(s.taxNumber)}"></div>
+        <div class="field"><label>رقم الهاتف</label><input id="sPhone" value="${escapeHtml(s.phone)}"></div>
+        <div class="field"><label>البريد الإلكتروني</label><input id="sEmail" value="${escapeHtml(s.email)}"></div>
+        <div class="field"><label>الموقع الإلكتروني</label><input id="sWebsite" value="${escapeHtml(s.website)}"></div>
+        <div class="field"><label>العملة</label><input id="sCurrency" value="${escapeHtml(s.currency)}"></div>
+        <div class="field"><label>كود الدولة الافتراضي (لأرقام واتساب العميل)</label><input id="sCountryCode" value="${escapeHtml(s.defaultCountryCode)}" placeholder="مثال: 966 للسعودية، 20 لمصر"></div>
+      </div>
+      <div class="field"><label>العنوان</label><input id="sAddress" value="${escapeHtml(s.address)}"></div>
+      <div class="field"><label>عبارة الشكر في نهاية الفاتورة</label><input id="sThanks" value="${escapeHtml(s.thanksNote)}"></div>
+      <div class="field">
+        <label>شعار الورشة</label>
+        <input type="file" id="sLogoFile" accept="image/*" onchange="previewLogo(event)">
+        <div style="margin-top:10px;display:flex;align-items:center;gap:12px;">
+          <div style="width:64px;height:64px;border:1.5px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;" id="logoPreviewBox">
+            ${s.logo?`<img src="${s.logo}" style="width:100%;height:100%;object-fit:contain;">`:'<span style="font-size:11px;color:var(--steel);">لا يوجد</span>'}
+          </div>
+          ${s.logo?`<button class="btn btn-outline btn-sm" onclick="removeLogo()">إزالة الشعار</button>`:''}
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:6px;" onclick="submitSettings()">حفظ الإعدادات</button>
+    </div>`;
+}
+let PENDING_LOGO = null;
+function previewLogo(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    PENDING_LOGO = reader.result;
+    document.getElementById('logoPreviewBox').innerHTML = `<img src="${PENDING_LOGO}" style="width:100%;height:100%;object-fit:contain;">`;
+  };
+  reader.readAsDataURL(file);
+}
+async function removeLogo(){
+  DB.settings.logo = null;
+  PENDING_LOGO = null;
+  await saveSettings();
+  renderSettings();
+  renderShell();
+}
+async function submitSettings(){
+  const s = DB.settings;
+  s.name = document.getElementById('sName').value.trim() || s.name;
+  s.commercialRecord = document.getElementById('sCR').value.trim();
+  s.taxNumber = document.getElementById('sTax').value.trim();
+  s.phone = document.getElementById('sPhone').value.trim();
+  s.email = document.getElementById('sEmail').value.trim();
+  s.website = document.getElementById('sWebsite').value.trim();
+  s.currency = document.getElementById('sCurrency').value.trim() || s.currency;
+  s.defaultCountryCode = document.getElementById('sCountryCode').value.trim() || s.defaultCountryCode;
+  s.address = document.getElementById('sAddress').value.trim();
+  s.thanksNote = document.getElementById('sThanks').value.trim();
+  if(PENDING_LOGO){ s.logo = PENDING_LOGO; PENDING_LOGO = null; }
+  await saveSettings();
+  renderShell();
+  alert('تم حفظ الإعدادات بنجاح');
+}
+
+/* ===================================================================
+   MODAL HELPERS
+=================================================================== */
+function openModal(){ document.getElementById('modalBg').style.display='flex'; }
+function closeModal(){ document.getElementById('modalBg').style.display='none'; document.getElementById('modalContent').innerHTML=''; }
+
+/* ===================================================================
+   INIT
+=================================================================== */
+(async function init(){
+  await loadAll();
+  document.getElementById('loginHint').innerHTML =
+    'أول تشغيل؟ استخدم حساب المدير الافتراضي:<br><b>اسم المستخدم:</b> admin &nbsp; <b>كلمة المرور:</b> admin123<br>يمكنك إنشاء المزيد من المستخدمين والفروع من داخل النظام.';
+})();
+</script>
+</body>
+</html>
